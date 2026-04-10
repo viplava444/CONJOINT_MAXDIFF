@@ -42,7 +42,7 @@ def _render_attribute_editor() -> None:
 
             with col_del:
                 if st.button("✕", key=f"del_attr_{i}", help="Remove attribute",
-                             use_container_width=True):
+                             width="stretch"):
                     attrs.pop(i)
                     st.session_state[SessionKeys.ATTRIBUTES] = attrs
                     st.rerun()
@@ -191,7 +191,7 @@ def _render_cbc_config() -> None:
 
     col_add, col_summary = st.columns([1, 2])
     with col_add:
-        if st.button("+ Add attribute", use_container_width=True):
+        if st.button("+ Add attribute", width="stretch"):
             attrs = st.session_state[SessionKeys.ATTRIBUTES]
             attrs.append({
                 "name": f"Attribute {len(attrs) + 1}",
@@ -280,7 +280,7 @@ def _render_maxdiff_config() -> None:
 
     col_add, col_summary = st.columns([1, 2])
     with col_add:
-        if st.button("+ Add item", use_container_width=True):
+        if st.button("+ Add item", width="stretch"):
             items = st.session_state[SessionKeys.ITEMS]
             items.append(f"Item {len(items) + 1}")
             st.session_state[SessionKeys.ITEMS] = items
