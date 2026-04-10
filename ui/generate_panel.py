@@ -2,10 +2,9 @@
 ui/generate_panel.py
 --------------------
 Step 2: Generate the design.
-  - Validates inputs
-  - Shows design summary statistics
-  - Triggers the generation algorithm with a live progress bar
-  - Shows the resulting design matrix in a table
+
+Fix (2026-04-10): replaced deprecated use_container_width=True/False with
+width='stretch'/'content' throughout.
 """
 
 from __future__ import annotations
@@ -72,9 +71,7 @@ def _run_cbc_generation(inp) -> None:
     """Run the CBC generator and store results in session state."""
     progress_bar = st.progress(0, text="Starting...")
     status_text = st.empty()
-
     callback = _make_progress_callback(progress_bar, status_text)
-
     seed = st.session_state.get(SessionKeys.SEED, 42)
 
     start_time = time.time()
@@ -103,9 +100,7 @@ def _run_maxdiff_generation(inp) -> None:
     """Run the MaxDiff generator and store results in session state."""
     progress_bar = st.progress(0, text="Starting...")
     status_text = st.empty()
-
     callback = _make_progress_callback(progress_bar, status_text)
-
     seed = st.session_state.get(SessionKeys.SEED, 42)
 
     start_time = time.time()
@@ -132,7 +127,7 @@ def _run_maxdiff_generation(inp) -> None:
 # ── Design matrix preview ─────────────────────────────────────────────────────
 
 def _show_cbc_matrix(design) -> None:
-    """Show the CBC design matrix as a paginated dataframe."""
+    """Show the CBC design matrix as a dataframe."""
     st.subheader("Design matrix")
 
     block_options = [f"Block {b}" for b in design.blocks]
@@ -142,16 +137,15 @@ def _show_cbc_matrix(design) -> None:
     df = cbc_to_dataframe(design)
     block_df = df[df["Block"] == selected_block].reset_index(drop=True)
 
-    # Style holdout rows
     def highlight_holdout(row):
         if row["Holdout"] == 1:
             return ["background-color: #FEF3C7"] * len(row)
         return [""] * len(row)
 
     styled = block_df.style.apply(highlight_holdout, axis=1)
-    st.dataframe(styled, use_container_width=True, height=400)
+    st.dataframe(styled, width="stretch", height=400)
     st.caption(
-        f"Block {selected_block}: {len(block_df[block_df['Holdout']==0]) // design.n_tasks_per_block} tasks "
+        f"Block {selected_block}: {len(block_df[block_df['Holdout']==0]) // max(design.n_tasks_per_block, 1)} tasks "
         f"(yellow = holdout) · "
         f"Total design: {len(df)} rows across {design.n_blocks} blocks"
     )
@@ -168,7 +162,7 @@ def _show_maxdiff_matrix(design) -> None:
     df = maxdiff_to_dataframe(design)
     block_df = df[df["Block"] == selected_block].reset_index(drop=True)
 
-    st.dataframe(block_df, use_container_width=True, height=400)
+    st.dataframe(block_df, width="stretch", height=400)
     st.caption(
         f"Block {selected_block}: {len(block_df['Set'].unique())} sets · "
         f"Total items shown: {len(block_df)}"
@@ -228,7 +222,7 @@ def render_generate_panel() -> None:
             st.error(f"✕ {err}")
         st.stop()
 
-    # ── RNG seed control ──
+    # ── RNG seed + generate button ──
     col_seed, col_gen = st.columns([2, 3])
     with col_seed:
         st.session_state[SessionKeys.SEED] = st.number_input(
@@ -239,11 +233,11 @@ def render_generate_panel() -> None:
         )
 
     with col_gen:
-        st.write("")  # vertical align
+        st.write("")
         generate_clicked = st.button(
             "🔬 Generate design",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             help="Runs the coordinate exchange optimizer. Takes 5–30 seconds depending on design size."
         )
 
