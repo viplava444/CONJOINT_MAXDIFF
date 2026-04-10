@@ -2,16 +2,14 @@
 ui/diagnostics_panel.py
 ------------------------
 Step 4: Statistical diagnostics report.
-  - D-efficiency gauge
-  - Level balance charts
-  - Attribute correlation heatmap
-  - Warnings and recommendations
-  - Task complexity distribution (CBC)
-  - Item appearance chart (MaxDiff)
+
+Fix (2026-04-10): replaced deprecated use_container_width=True with
+width='stretch' throughout, per Streamlit >= 1.40 API.
 """
 
 from __future__ import annotations
 
+import pandas as pd
 import streamlit as st
 
 from core.models import DiagnosticsReport
@@ -19,7 +17,7 @@ from utils.charts import (
     d_efficiency_gauge, level_balance_chart, correlation_heatmap,
     item_appearances_chart, task_complexity_chart,
 )
-from utils.helpers import SessionKeys, efficiency_badge
+from utils.helpers import SessionKeys
 from config.settings import D_EFFICIENCY_GOOD, D_EFFICIENCY_WARN, MAX_ATTR_CORRELATION
 
 
@@ -136,23 +134,23 @@ def render_diagnostics_panel() -> None:
 
     st.divider()
 
-    # ── Charts ──
+    # ── Charts row ──
     col_left, col_right = st.columns([1, 2])
 
     with col_left:
         st.subheader("D-Efficiency gauge")
         fig_gauge = d_efficiency_gauge(report.d_efficiency)
-        st.plotly_chart(fig_gauge, use_container_width=True, key="gauge_chart")
+        st.plotly_chart(fig_gauge, width="stretch", key="gauge_chart")
 
     with col_right:
         if study_type == "CBC" and design is not None:
             st.subheader("Task complexity distribution")
             fig_complexity = task_complexity_chart(design)
-            st.plotly_chart(fig_complexity, use_container_width=True, key="complexity_chart")
+            st.plotly_chart(fig_complexity, width="stretch", key="complexity_chart")
         elif study_type == "MaxDiff" and design is not None and inp is not None:
             st.subheader("Item appearance counts")
             fig_app = item_appearances_chart(design.appearance_counts, inp.target_appearances)
-            st.plotly_chart(fig_app, use_container_width=True, key="app_chart")
+            st.plotly_chart(fig_app, width="stretch", key="app_chart")
 
     st.divider()
 
@@ -160,9 +158,8 @@ def render_diagnostics_panel() -> None:
     st.subheader("Level balance by attribute")
     if report.level_balance:
         fig_balance = level_balance_chart(report.level_balance)
-        st.plotly_chart(fig_balance, use_container_width=True, key="balance_chart")
+        st.plotly_chart(fig_balance, width="stretch", key="balance_chart")
 
-        # Also show table
         with st.expander("Level balance detail table"):
             rows = []
             for b in report.level_balance:
@@ -176,8 +173,7 @@ def render_diagnostics_panel() -> None:
                         "Dev (%)": round(dev_pct, 1),
                         "Status": "✓" if dev_pct <= 10 else "⚠" if dev_pct <= 20 else "✗",
                     })
-            import pandas as pd
-            st.dataframe(pd.DataFrame(rows), use_container_width=True)
+            st.dataframe(pd.DataFrame(rows), width="stretch")
 
     st.divider()
 
@@ -190,11 +186,9 @@ def render_diagnostics_panel() -> None:
         )
         fig_corr = correlation_heatmap(report.correlation_matrix)
         if fig_corr:
-            st.plotly_chart(fig_corr, use_container_width=True, key="corr_heatmap")
+            st.plotly_chart(fig_corr, width="stretch", key="corr_heatmap")
 
     # ── Design metadata ──
     with st.expander("Raw design metadata"):
-        meta = {}
-        if design is not None:
-            meta = design.metadata
+        meta = design.metadata if design is not None else {}
         st.json(meta)
