@@ -2,7 +2,15 @@
 utils/charts.py
 ---------------
 Reusable Plotly chart builders for the diagnostics and preview panels.
-All charts use the same color palette defined in config/settings.py.
+
+Fix log (2026-04-10):
+  - Removed showlegend from _BASE_LAYOUT entirely; every chart sets it
+    explicitly via fig.update_layout(showlegend=...) as a SEPARATE call
+    AFTER **_BASE_LAYOUT is unpacked, avoiding the duplicate-keyword error
+    that Plotly raises when the same key appears both inside **dict and as
+    a direct kwarg.
+  - Removed margin from _BASE_LAYOUT; charts that need a custom margin
+    call fig.update_layout(margin=...) separately.
 """
 
 from __future__ import annotations
@@ -12,28 +20,36 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 
 from config.settings import CHART_COLORS
-from core.models import DiagnosticsReport, LevelBalance
+from core.models import LevelBalance
 
 
-# ── Shared layout defaults ────────────────────────────────────────────────────
+# ── Shared layout base (NO showlegend, NO margin — set per chart) ─────────────
 
 _BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
     font=dict(family="Inter, system-ui, sans-serif", size=12),
-    margin=dict(l=10, r=10, t=30, b=10),
-    # showlegend is intentionally omitted here — set explicitly per chart
-    # to avoid keyword-conflict errors in Plotly >= 5.18
 )
+
+
+def _apply_base(fig: go.Figure, **extra) -> go.Figure:
+    """
+    Apply _BASE_LAYOUT then any extra kwargs in a single update_layout call.
+    This is the ONLY safe way — unpacking _BASE_LAYOUT and passing extra kwargs
+    in the same call causes a duplicate-key TypeError if any key appears in both.
+    We merge into one dict first, so there is only ever one dict unpacked.
+    """
+    merged = {**_BASE_LAYOUT, **extra}
+    fig.update_layout(**merged)
+    return fig
 
 
 # ── D-efficiency gauge ────────────────────────────────────────────────────────
 
 def d_efficiency_gauge(d_eff: float) -> go.Figure:
-    """Gauge chart showing D-efficiency with color zones."""
+    """Gauge chart showing D-efficiency with colour-coded zones."""
     color = (
         CHART_COLORS["success"] if d_eff >= 80
         else CHART_COLORS["warning"] if d_eff >= 65
@@ -49,9 +65,9 @@ def d_efficiency_gauge(d_eff: float) -> go.Figure:
             "bgcolor": "white",
             "borderwidth": 0,
             "steps": [
-                {"range": [0, 65],  "color": "#FEE2E2"},
-                {"range": [65, 80], "color": "#FEF3C7"},
-                {"range": [80, 100],"color": "#DCFCE7"},
+                {"range": [0, 65],   "color": "#FEE2E2"},
+                {"range": [65, 80],  "color": "#FEF3C7"},
+                {"range": [80, 100], "color": "#DCFCE7"},
             ],
             "threshold": {
                 "line": {"color": color, "width": 3},
@@ -61,15 +77,17 @@ def d_efficiency_gauge(d_eff: float) -> go.Figure:
         },
         title={"text": "D-Efficiency", "font": {"size": 13}},
     ))
-    fig.update_layout(**_BASE_LAYOUT, showlegend=False, height=200)
+    _apply_base(fig,
+                showlegend=False,
+                height=200,
+                margin=dict(l=10, r=10, t=30, b=10))
     return fig
 
 
 # ── Level balance bar chart ───────────────────────────────────────────────────
 
 def level_balance_chart(balance: List[LevelBalance]) -> go.Figure:
-    """Grouped bar chart of level counts vs. expected for each attribute."""
-    attrs = []
+    """Grouped bar chart: actual level counts vs expected, coloured by deviation."""
     levels = []
     counts = []
     expecteds = []
@@ -77,7 +95,6 @@ def level_balance_chart(balance: List[LevelBalance]) -> go.Figure:
 
     for b in balance:
         for lvl, cnt in b.counts.items():
-            attrs.append(b.attribute_name)
             levels.append(f"{b.attribute_name}: {lvl}")
             counts.append(cnt)
             expecteds.append(round(b.expected_count, 1))
@@ -102,20 +119,22 @@ def level_balance_chart(balance: List[LevelBalance]) -> go.Figure:
         y=expecteds,
         name="Expected",
         mode="markers",
-        marker=dict(symbol="line-ew", size=14, color=CHART_COLORS["neutral"],
-                    line=dict(width=2, color=CHART_COLORS["neutral"])),
+        marker=dict(
+            symbol="line-ew",
+            size=14,
+            color=CHART_COLORS["neutral"],
+            line=dict(width=2, color=CHART_COLORS["neutral"]),
+        ),
     ))
-    layout = {**_BASE_LAYOUT}
-    layout["showlegend"] = True
-    fig.update_layout(
-        **layout,
-        title=dict(text="Level frequency vs. expected", font=dict(size=13)),
-        legend=dict(orientation="h", y=1.1, x=0),
-        xaxis=dict(tickangle=-35, tickfont=dict(size=10)),
-        yaxis=dict(title="Count"),
-        height=320,
-        bargap=0.3,
-    )
+    _apply_base(fig,
+                showlegend=True,
+                title=dict(text="Level frequency vs. expected", font=dict(size=13)),
+                legend=dict(orientation="h", y=1.1, x=0),
+                xaxis=dict(tickangle=-35, tickfont=dict(size=10)),
+                yaxis=dict(title="Count"),
+                height=320,
+                bargap=0.3,
+                margin=dict(l=10, r=10, t=60, b=10))
     return fig
 
 
@@ -145,14 +164,13 @@ def correlation_heatmap(corr_matrix: pd.DataFrame) -> Optional[go.Figure]:
         showscale=True,
         colorbar=dict(thickness=12, len=0.8),
     ))
-    fig.update_layout(
-        **_BASE_LAYOUT,
-        showlegend=False,
-        title=dict(text="Spearman attribute correlation matrix", font=dict(size=13)),
-        height=max(200, 60 * len(labels) + 60),
-        xaxis=dict(tickfont=dict(size=11)),
-        yaxis=dict(tickfont=dict(size=11)),
-    )
+    _apply_base(fig,
+                showlegend=False,
+                title=dict(text="Spearman attribute correlation matrix", font=dict(size=13)),
+                height=max(200, 60 * len(labels) + 60),
+                xaxis=dict(tickfont=dict(size=11)),
+                yaxis=dict(tickfont=dict(size=11)),
+                margin=dict(l=10, r=10, t=40, b=10))
     return fig
 
 
@@ -178,47 +196,54 @@ def item_appearances_chart(appearance_counts: Dict[str, int], target: int) -> go
         textposition="outside",
     ))
     fig.add_vline(
-        x=target, line_dash="dash",
+        x=target,
+        line_dash="dash",
         line_color=CHART_COLORS["neutral"],
         annotation_text=f"Target: {target}",
         annotation_position="top right",
     )
-    fig.update_layout(
-        **_BASE_LAYOUT,
-        showlegend=False,
-        title=dict(text="Item appearance counts", font=dict(size=13)),
-        height=max(200, 28 * len(items) + 60),
-        xaxis=dict(title="Appearances"),
-        yaxis=dict(tickfont=dict(size=10)),
-        margin=dict(l=20, r=40, t=40, b=20),
-    )
+    _apply_base(fig,
+                showlegend=False,
+                title=dict(text="Item appearance counts", font=dict(size=13)),
+                height=max(200, 28 * len(items) + 60),
+                xaxis=dict(title="Appearances"),
+                yaxis=dict(tickfont=dict(size=10)),
+                margin=dict(l=20, r=40, t=40, b=20))
     return fig
 
 
 # ── Complexity distribution (CBC) ─────────────────────────────────────────────
 
 def task_complexity_chart(design) -> go.Figure:
-    """Bar chart of complexity scores across tasks (for fatigue analysis)."""
+    """Bar chart of task complexity scores (fatigue optimisation view)."""
     tasks = [t for t in design.tasks if not t.is_holdout and t.block == design.blocks[0]]
     task_nums = [t.task_number for t in tasks]
     scores = [t.complexity_score for t in tasks]
+
+    if not scores:
+        fig = go.Figure()
+        _apply_base(fig, showlegend=False, height=220,
+                    margin=dict(l=10, r=10, t=30, b=10))
+        return fig
+
+    p33 = float(np.percentile(scores, 33))
+    p66 = float(np.percentile(scores, 66))
 
     fig = go.Figure(go.Bar(
         x=[f"T{n}" for n in task_nums],
         y=scores,
         marker_color=[
-            CHART_COLORS["success"] if s <= np.percentile(scores, 33)
-            else CHART_COLORS["warning"] if s <= np.percentile(scores, 66)
+            CHART_COLORS["success"] if s <= p33
+            else CHART_COLORS["warning"] if s <= p66
             else CHART_COLORS["danger"]
             for s in scores
         ],
     ))
-    fig.update_layout(
-        **_BASE_LAYOUT,
-        showlegend=False,
-        title=dict(text="Task complexity (fatigue optimization view)", font=dict(size=13)),
-        xaxis=dict(title="Task"),
-        yaxis=dict(title="Complexity score"),
-        height=220,
-    )
+    _apply_base(fig,
+                showlegend=False,
+                title=dict(text="Task complexity (fatigue optimisation view)", font=dict(size=13)),
+                xaxis=dict(title="Task"),
+                yaxis=dict(title="Complexity score"),
+                height=220,
+                margin=dict(l=10, r=10, t=40, b=10))
     return fig
