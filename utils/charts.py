@@ -25,7 +25,8 @@ _BASE_LAYOUT = dict(
     plot_bgcolor="rgba(0,0,0,0)",
     font=dict(family="Inter, system-ui, sans-serif", size=12),
     margin=dict(l=10, r=10, t=30, b=10),
-    showlegend=False,
+    # showlegend is intentionally omitted here — set explicitly per chart
+    # to avoid keyword-conflict errors in Plotly >= 5.18
 )
 
 
@@ -60,7 +61,7 @@ def d_efficiency_gauge(d_eff: float) -> go.Figure:
         },
         title={"text": "D-Efficiency", "font": {"size": 13}},
     ))
-    fig.update_layout(**_BASE_LAYOUT, height=200)
+    fig.update_layout(**_BASE_LAYOUT, showlegend=False, height=200)
     return fig
 
 
@@ -104,10 +105,11 @@ def level_balance_chart(balance: List[LevelBalance]) -> go.Figure:
         marker=dict(symbol="line-ew", size=14, color=CHART_COLORS["neutral"],
                     line=dict(width=2, color=CHART_COLORS["neutral"])),
     ))
+    layout = {**_BASE_LAYOUT}
+    layout["showlegend"] = True
     fig.update_layout(
-        **_BASE_LAYOUT,
+        **layout,
         title=dict(text="Level frequency vs. expected", font=dict(size=13)),
-        showlegend=True,
         legend=dict(orientation="h", y=1.1, x=0),
         xaxis=dict(tickangle=-35, tickfont=dict(size=10)),
         yaxis=dict(title="Count"),
@@ -145,6 +147,7 @@ def correlation_heatmap(corr_matrix: pd.DataFrame) -> Optional[go.Figure]:
     ))
     fig.update_layout(
         **_BASE_LAYOUT,
+        showlegend=False,
         title=dict(text="Spearman attribute correlation matrix", font=dict(size=13)),
         height=max(200, 60 * len(labels) + 60),
         xaxis=dict(tickfont=dict(size=11)),
@@ -182,6 +185,7 @@ def item_appearances_chart(appearance_counts: Dict[str, int], target: int) -> go
     )
     fig.update_layout(
         **_BASE_LAYOUT,
+        showlegend=False,
         title=dict(text="Item appearance counts", font=dict(size=13)),
         height=max(200, 28 * len(items) + 60),
         xaxis=dict(title="Appearances"),
@@ -211,6 +215,7 @@ def task_complexity_chart(design) -> go.Figure:
     ))
     fig.update_layout(
         **_BASE_LAYOUT,
+        showlegend=False,
         title=dict(text="Task complexity (fatigue optimization view)", font=dict(size=13)),
         xaxis=dict(title="Task"),
         yaxis=dict(title="Complexity score"),
