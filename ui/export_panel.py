@@ -2,10 +2,9 @@
 ui/export_panel.py
 ------------------
 Step 5: Export the design in multiple formats.
-  - CSV, Excel, JSON
-  - Qualtrics-compatible CSV
-  - Sawtooth SSI-compatible CSV (CBC only)
-  - Preview of the CSV output
+
+Fix (2026-04-10): replaced deprecated use_container_width=True with
+width='stretch' on all st.download_button calls.
 """
 
 from __future__ import annotations
@@ -40,8 +39,8 @@ def _render_cbc_exports(design, diagnostics) -> None:
             data=csv_data,
             file_name=f"cbc_design_{ts}.csv",
             mime="text/csv",
-            use_container_width=True,
-            help="Flat CSV with one row per (block, task, alternative)"
+            width="stretch",
+            help="Flat CSV with one row per (block, task, alternative)",
         )
 
     with col2:
@@ -51,8 +50,8 @@ def _render_cbc_exports(design, diagnostics) -> None:
             data=excel_data,
             file_name=f"cbc_design_{ts}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-            help="Multi-sheet workbook: Design Matrix, Diagnostics, Codebook"
+            width="stretch",
+            help="Multi-sheet workbook: Design Matrix, Diagnostics, Codebook",
         )
 
     with col3:
@@ -62,8 +61,8 @@ def _render_cbc_exports(design, diagnostics) -> None:
             data=json_data,
             file_name=f"cbc_design_{ts}.json",
             mime="application/json",
-            use_container_width=True,
-            help="Hierarchical JSON with full metadata"
+            width="stretch",
+            help="Hierarchical JSON with full metadata",
         )
 
     st.divider()
@@ -79,7 +78,7 @@ def _render_cbc_exports(design, diagnostics) -> None:
             data=q_data,
             file_name=f"cbc_qualtrics_{ts}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
     with col5:
@@ -91,12 +90,11 @@ def _render_cbc_exports(design, diagnostics) -> None:
             data=ssi_data,
             file_name=f"cbc_sawtooth_{ts}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
     st.divider()
     st.subheader("CSV preview (first 20 rows)")
-    import io
     preview = export_cbc_csv(design).decode("utf-8")
     lines = preview.split("\n")[:21]
     st.code("\n".join(lines), language="text")
@@ -116,7 +114,7 @@ def _render_maxdiff_exports(design, diagnostics) -> None:
             data=csv_data,
             file_name=f"maxdiff_design_{ts}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
     with col2:
@@ -126,7 +124,7 @@ def _render_maxdiff_exports(design, diagnostics) -> None:
             data=excel_data,
             file_name=f"maxdiff_design_{ts}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width="stretch",
         )
 
     with col3:
@@ -136,7 +134,7 @@ def _render_maxdiff_exports(design, diagnostics) -> None:
             data=json_data,
             file_name=f"maxdiff_design_{ts}.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
 
     st.divider()
